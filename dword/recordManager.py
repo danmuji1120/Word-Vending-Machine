@@ -43,7 +43,8 @@ class Record:
           result[column] = accuracy * 100
       return result
 
-  def add(self, new_data, time = datetime.now()):
+  def add(self, new_data):
+    time = datetime.now()
     time = time.strftime("%Y-%m-%d-%H-%M-%S")
     original_data = self.load_file()
     data = [time] + [-1] * (len(original_data.columns) - 1)

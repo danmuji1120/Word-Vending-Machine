@@ -15,7 +15,7 @@ class Game:
     self.data = {}
     self.scores = {}
     self.current_question = ""
-    self.format = ["단어", "뜻"]
+    # self.format = ["단어", "뜻"]
     self.question_tag = "단어"
     self.answer_tag = "뜻"
     self.fileHandler = FileHandler(self.section_name)
@@ -83,6 +83,12 @@ class Game:
       return State.NO_PROCESS
   def get_remain_question(self):
     return self.queue.qsize()
+  def set_score(self, word:str, value:int):
+    if word in self.scores.keys():
+      self.scores[word] = value
+      return State.SUCCESS
+    else:
+      return State.NO_EXIST
   def answer(self, user_answer:str):
     if self.processing:
       correct = self.data[self.current_question]
@@ -96,6 +102,7 @@ class Game:
         return State.WRONG
     else:
       return State.NO_PROCESS
+    print(self.scores)
   def add(self, word:list):
     if self.processing:
       return State.ALREADY
