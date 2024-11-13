@@ -20,6 +20,17 @@ class Game:
     self.answer_tag = "뜻"
     self.fileHandler = FileHandler(self.section_name)
     self.record = Record(self.section_name)
+  def get_rate_all(self) -> dict: # 전체 수행에 대한 정답률
+    self.data = self.fileHandler.get_list()
+    keys = self.data.keys() # 모든 단어
+    result = {} 
+    for key in keys:
+      result[key] = 0 # 모든 단어의 정답률 0 초기화
+      added_data = self.record.get_rate_all() # 이전의 정답률 로드
+    for key in added_data.keys():
+      if key in keys: 
+        result[key] = added_data[key] # 정답률 저장
+    return result
   def get_rate(self, days:int=DAYS, count:int=COUNT) -> dict: # 최근 days일간 최대 count회 시행했을 때의 정답률을 반환
     self.data = self.fileHandler.get_list()
     keys = self.data.keys() # 모든 단어

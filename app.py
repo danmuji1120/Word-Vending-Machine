@@ -1,4 +1,3 @@
-## Ex 3-3. 창 닫기.
 import ui
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QStackedLayout, QGridLayout, QScrollArea, QComboBox, QLineEdit, QCheckBox

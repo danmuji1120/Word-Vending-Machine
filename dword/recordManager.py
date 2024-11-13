@@ -24,7 +24,42 @@ class Record:
           logging.info(f"{self.path} 파일이 생성되었습니다.")
   # data format {"apple": 1, "banana": 0, "cat": 1}
   # 1: correct, 0: incorrect, -1: no test
-  def get_rate(self, days:int=10, count:int=10):
+  def get_rememeber_date(self): # 단어마다 완벽히 외운 날짜를 반환
+      # n회 이상 정답이 이어지면 완벽히 외웠다라고 가정
+      # 완벽히 외우고 정답률이 떨어진다면 외우지 못했다고 가정
+      # 따라서 마지막으로 정답이 이어졌을 때 최초로 정답이 n회 이어진 날짜를 저장
+      result = {}
+      data = self.load_file()
+      data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d-%H-%M-%S")
+      date_data = {}
+      count_data = {}
+      if len(data.columns) > 1:
+        for word in data.columns[1:]:
+          count_data[word] = 0
+        for row in range(len(data)):
+          for word in data.columns[1:]:
+            if data.loc[row][word] == 1:
+              if count_data[word] < 5:
+                count_data[word] += 1
+                if count_data[word] == 5:
+                  date_data[word] = data.loc[row][0]
+            elif data.loc[row][word] == 0:
+              if (count_data[word] > 0):
+                count_data[word] -= 1
+      return date_data
+
+  def get_unnamed(self): # 단어별로 완벽히 외운 날짜, 다시 잊어버린 날짜를 반환
+      pass
+  def get_rate_all(self):
+    data = self.load_file()
+    result = {}
+    for column in data.columns[1:]:
+        correct_answers = (data[column] == 1).sum()
+        total_attempts = (data[column] != -1).sum()
+        accuracy = (correct_answers / total_attempts) if total_attempts > 0 else 0
+        result[column] = accuracy * 100
+    return result
+  def get_rate(self, days:int=10, count:int=10): # 최근 days일 이내의 최소 count개 이상의 정답률의 평균을 반환
       data = self.load_file()
       data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d-%H-%M-%S")
 

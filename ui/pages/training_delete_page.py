@@ -7,14 +7,30 @@ import events
 import dword
 def set_training_delete_page(stack: QStackedLayout, game:dword.Game):
   word_data = game.get_list()
+  info_data = game.get_info()
+  rate_data = game.get_rate_all()
   scroll_area = QScrollArea()
   scroll_area.setWidgetResizable(True)
   container_widget = QWidget()
-  layout = QVBoxLayout()
+  layout = QHBoxLayout()
+  # layout = QVBoxLayout()
+  word_info_layout = QVBoxLayout()
+  word_rate_layout = QVBoxLayout()
   for word, meaning in word_data.items():
-    label = QLabel(f"{word}: {meaning}")
-    layout.addWidget(label)
-  layout.setAlignment(Qt.AlignTop)
+    word_info = QLabel(f"{word}: {meaning} ({info_data[word]})")
+    word_rate = QLabel(f"{int(rate_data[word])}%")
+    if int(rate_data[word]) >= 90:
+       word_rate.setStyleSheet("color: green;")
+    elif int(rate_data[word]) >= 30:
+       word_rate.setStyleSheet("color: orange;")
+    else:
+       word_rate.setStyleSheet("color: red;")
+    word_info_layout.addWidget(word_info)
+    word_rate_layout.addWidget(word_rate)
+  word_info_layout.setAlignment(Qt.AlignTop)
+  word_rate_layout.setAlignment(Qt.AlignTop)
+  layout.addLayout(word_info_layout)
+  layout.addLayout(word_rate_layout)
   container_widget.setLayout(layout)
   scroll_area.setWidget(container_widget)
 
@@ -27,7 +43,7 @@ def set_training_delete_page(stack: QStackedLayout, game:dword.Game):
   # answer_labe = components.set_title_label(string="뜻",sort="left")
   add_btn = components.set_default_btn("Add")
   add_btn.setShortcut(QKeySequence('return'))
-  add_btn.clicked.connect(lambda: delete(word_input, state_label, layout, game))
+  add_btn.clicked.connect(lambda: delete(word_input, state_label, word_info_layout, word_rate_layout, game))
   state_label = components.set_default_label("state")
 
   back_btn = components.set_default_btn('back')
@@ -72,7 +88,7 @@ def set_training_delete_page(stack: QStackedLayout, game:dword.Game):
   stack.setCurrentIndex(stack.count() - 1)
 
 
-def delete(word_input: QLineEdit, state_label: QLabel, word_list: QVBoxLayout, game:dword.Game):
+def delete(word_input: QLineEdit, state_label: QLabel, word_info_layout: QVBoxLayout, word_rate_layout: QVBoxLayout, game:dword.Game):
   word = word_input.text()
   word = word.strip()
   if (word.replace(" ", "") == ""):
@@ -81,12 +97,14 @@ def delete(word_input: QLineEdit, state_label: QLabel, word_list: QVBoxLayout, g
   else:
     add_result = game.delete(word)
     if add_result == dword.State.SUCCESS:
-      for i in range(word_list.count()):
-        widget = word_list.itemAt(i).widget()
+      for i in range(word_info_layout.count()):
+        widget = word_info_layout.itemAt(i).widget()
+        widget_rate = word_rate_layout.itemAt(i).widget()
         if widget and isinstance(widget, QLabel):  # QLabel만 확인
             text = widget.text().split(":")[0]
             if word == text:  # 텍스트에 word가 포함되면
                 widget.deleteLater()  # 해당 QLabel을 삭제
+                widget_rate.deleteLater()
       # label = QLabel(f"{question}: {answer}")
       # word_list.addWidget(label)
       state_label.setText("Success!")

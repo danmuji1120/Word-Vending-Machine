@@ -11,6 +11,8 @@ def set_training_main_page(stack: QStackedLayout):
   title_label = components.set_title_label("Training")
   start_btn = components.set_default_btn("Start")
   start_btn.clicked.connect(lambda: ui.pages.set_training_start_page(stack))
+  record_btn = components.set_default_btn("Record")
+  record_btn.clicked.connect(lambda: ui.pages.set_training_record_page(stack))
   add_btn = components.set_default_btn("Add")
   add_btn.clicked.connect(lambda: ui.pages.set_training_add_page(stack, game))
   delete_btn = components.set_default_btn("Delete")
@@ -23,7 +25,7 @@ def set_training_main_page(stack: QStackedLayout):
   back_btn.clicked.connect(lambda: events.back_page(stack))
 
 
-  widget_list = [title_label, start_btn, add_btn, delete_btn, list_btn, back_btn]
+  widget_list = [title_label, start_btn, record_btn, add_btn, delete_btn, list_btn, back_btn]
   # setting page as default
   components.set_default_page(widget_list, stack)
 

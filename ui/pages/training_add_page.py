@@ -8,17 +8,32 @@ import dword
 def set_training_add_page(stack: QStackedLayout, game:dword.Game):
   word_data = game.get_list()
   info_data = game.get_info()
+  rate_data = game.get_rate_all()
   scroll_area = QScrollArea()
   scroll_area.setWidgetResizable(True)
   container_widget = QWidget()
-  layout = QVBoxLayout()
+  layout = QHBoxLayout()
+  # layout = QVBoxLayout()
+  word_info_layout = QVBoxLayout()
+  word_rate_layout = QVBoxLayout()
   for word, meaning in word_data.items():
-    label = QLabel(f"{word}: {meaning} ({info_data[word]})")
-    layout.addWidget(label)
-  layout.setAlignment(Qt.AlignTop)
+    word_info = QLabel(f"{word}: {meaning} ({info_data[word]})")
+    word_rate = QLabel(f"{int(rate_data[word])}%")
+    if int(rate_data[word]) >= 90:
+       word_rate.setStyleSheet("color: green;")
+    elif int(rate_data[word]) >= 30:
+       word_rate.setStyleSheet("color: orange;")
+    else:
+       word_rate.setStyleSheet("color: red;")
+       
+    word_info_layout.addWidget(word_info)
+    word_rate_layout.addWidget(word_rate)
+  word_info_layout.setAlignment(Qt.AlignTop)
+  word_rate_layout.setAlignment(Qt.AlignTop)
+  layout.addLayout(word_info_layout)
+  layout.addLayout(word_rate_layout)
   container_widget.setLayout(layout)
   scroll_area.setWidget(container_widget)
-
 
   title_label = components.set_title_label("Add")
   # question_label = components.set_title_label(string="단어",sort="left")
@@ -34,7 +49,7 @@ def set_training_add_page(stack: QStackedLayout, game:dword.Game):
   info_input.setMaximumSize(200, 20)
   add_btn = components.set_default_btn("Add")
   add_btn.setShortcut(QKeySequence('return'))
-  add_btn.clicked.connect(lambda: add(question_input, answer_input, info_input, state_label, layout, game))
+  add_btn.clicked.connect(lambda: add(question_input, answer_input, info_input, state_label, word_info_layout, word_rate_layout, game))
   state_label = components.set_default_label("state")
 
   back_btn = components.set_default_btn('back')
@@ -79,7 +94,7 @@ def set_training_add_page(stack: QStackedLayout, game:dword.Game):
   stack.setCurrentIndex(stack.count() - 1)
 
 
-def add(question_input: QLineEdit, answer_input: QLineEdit, info_input: QLineEdit, state_label: QLabel, word_list: QVBoxLayout, game:dword.Game):
+def add(question_input: QLineEdit, answer_input: QLineEdit, info_input: QLineEdit, state_label: QLabel, word_info_layout: QVBoxLayout, word_rate_layout: QVBoxLayout, game:dword.Game):
   question = question_input.text()
   answer = answer_input.text()
   info = info_input.text()
@@ -93,8 +108,11 @@ def add(question_input: QLineEdit, answer_input: QLineEdit, info_input: QLineEdi
   else:
     add_result = game.add([question, answer, info])
     if add_result == dword.State.SUCCESS:
-      label = QLabel(f"{question}: {answer} ({info})")
-      word_list.addWidget(label)
+      word_info = QLabel(f"{question}: {answer} ")
+      word_rate = QLabel(f"0%")
+      word_rate.setStyleSheet("color: red;")
+      word_info_layout.addWidget(word_info)
+      word_rate_layout.addWidget(word_rate)
       state_label.setText("Success!")
       state_label.setStyleSheet("color: green")
       question_input.setText("")
