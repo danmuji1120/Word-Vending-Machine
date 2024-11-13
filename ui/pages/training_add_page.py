@@ -1,128 +1,194 @@
-
 from PyQt5.QtWidgets import *
 import components
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import events
 import dword
-def set_training_add_page(stack: QStackedLayout, game:dword.Game):
-  word_data = game.get_list()
-  info_data = game.get_info()
-  rate_data = game.get_rate_all()
-  scroll_area = QScrollArea()
-  scroll_area.setWidgetResizable(True)
-  container_widget = QWidget()
-  layout = QHBoxLayout()
-  # layout = QVBoxLayout()
-  word_info_layout = QVBoxLayout()
-  word_rate_layout = QVBoxLayout()
-  for word, meaning in word_data.items():
-    word_info = QLabel(f"{word}: {meaning} ({info_data[word]})")
-    word_rate = QLabel(f"{int(rate_data[word])}%")
-    if int(rate_data[word]) >= 90:
-       word_rate.setStyleSheet("color: green;")
-    elif int(rate_data[word]) >= 30:
-       word_rate.setStyleSheet("color: orange;")
-    else:
-       word_rate.setStyleSheet("color: red;")
-       
-    word_info_layout.addWidget(word_info)
-    word_rate_layout.addWidget(word_rate)
-  word_info_layout.setAlignment(Qt.AlignTop)
-  word_rate_layout.setAlignment(Qt.AlignTop)
-  layout.addLayout(word_info_layout)
-  layout.addLayout(word_rate_layout)
-  container_widget.setLayout(layout)
-  scroll_area.setWidget(container_widget)
+from ui.styles.styles import INPUT_STYLE, BUTTON_STYLE, TITLE_STYLE
+def set_training_add_page(stack: QStackedLayout):
+  train_add_page = TrainingAddPage(stack)
+  train_add_page.set_page()
+class TrainingAddPage:
+    def __init__(self, stack) -> None:
+        self.stack = stack
+        self.widget = QWidget()
+        # 스크롤 영역 초기화
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.container_widget = QWidget()
+        self.layout = QHBoxLayout()
+        self.word_info_layout = QVBoxLayout()
+        self.word_rate_layout = QVBoxLayout()
 
-  title_label = components.set_title_label("Add")
-  # question_label = components.set_title_label(string="단어",sort="left")
-  question_input = QLineEdit()
-  question_input.setPlaceholderText("단어")
-  question_input.setMaximumSize(200, 20)
-  # answer_labe = components.set_title_label(string="뜻",sort="left")
-  answer_input = QLineEdit()
-  answer_input.setPlaceholderText("뜻")
-  answer_input.setMaximumSize(200, 20)
-  info_input = QLineEdit()
-  info_input.setPlaceholderText("정보")
-  info_input.setMaximumSize(200, 20)
-  add_btn = components.set_default_btn("Add")
-  add_btn.setShortcut(QKeySequence('return'))
-  add_btn.clicked.connect(lambda: add(question_input, answer_input, info_input, state_label, word_info_layout, word_rate_layout, game))
-  state_label = components.set_default_label("state")
+        # 게임 데이터 초기화
+        self.game = dword.Game()
+        self.word_data = self.game.get_list()
+        self.info_data = self.game.get_info()
+        self.rate_data = self.game.get_rate_all()
+        
+        # UI 요소 초기화
+        self.init_ui()
+        self.setup_word_list()
+        self.setup_layout()
+        
+    def init_ui(self):
+        self.title_label = components.set_title_label("단어 추가")
+        self.title_label.setStyleSheet(TITLE_STYLE)
+        
+        
+        self.question_input = QLineEdit()
+        self.question_input.setPlaceholderText("단어를 입력하세요")
+        self.question_input.setMinimumSize(250, 35)
+        self.question_input.setStyleSheet(INPUT_STYLE)
+        
+        self.answer_input = QLineEdit()
+        self.answer_input.setPlaceholderText("뜻을 입력하세요")
+        self.answer_input.setMinimumSize(250, 35)
+        self.answer_input.setStyleSheet(INPUT_STYLE)
+        
+        self.info_input = QLineEdit()
+        self.info_input.setPlaceholderText("추가 정보를 입력하세요")
+        self.info_input.setMinimumSize(250, 35)
+        self.info_input.setStyleSheet(INPUT_STYLE)
+        
+        # 버튼에 공통 스타일 적용
+        self.add_btn = QPushButton("추가")
+        self.add_btn.setStyleSheet(BUTTON_STYLE)
+        self.add_btn.setMinimumSize(120, 40)
+        self.add_btn.setShortcut(QKeySequence('return'))
+        self.add_btn.clicked.connect(self.add_word)
+        
+        self.back_btn = QPushButton("뒤로")
+        self.back_btn.setStyleSheet(BUTTON_STYLE)
+        self.back_btn.setMinimumSize(120, 40)
+        self.back_btn.setShortcut(QKeySequence('x'))
+        self.back_btn.clicked.connect(lambda: events.back_page(self.stack))
+        
+        self.state_label = QLabel()
+        self.state_label.setAlignment(Qt.AlignCenter)
+        self.state_label.setStyleSheet("font-size: 14px; margin: 10px;")
 
-  back_btn = components.set_default_btn('back')
-  back_btn.setShortcut(QKeySequence('x'))
-  back_btn.clicked.connect(lambda: events.back_page(stack))
-  
-  vbox = QVBoxLayout()
-  vbox.addStretch(1)
-  widget_list = [title_label, question_input, answer_input, info_input, add_btn, state_label, back_btn]
-  for i in widget_list:
-    print(i)
-    if isinstance(i, QLabel):
-        vbox.addWidget(i)
-    elif isinstance(i, QLineEdit):
-        hbox_line = QHBoxLayout()
-        hbox_line.addStretch(1)
-        hbox_line.addWidget(i)
-        hbox_line.addStretch(1)
-        vbox.addLayout(hbox_line)
-    elif isinstance(i, QPushButton):
-        i.setMinimumSize(100, 30)
-        hbox_btn = QHBoxLayout()
-        hbox_btn.addStretch(1)
-        hbox_btn.addWidget(i)
-        hbox_btn.addStretch(1)
-        vbox.addLayout(hbox_btn)
-    elif type(i) == list:
-        hbox_list = QHBoxLayout()
-        for j in i:
-            hbox_list.addWidget(j)
-        vbox.addLayout(hbox_list)
-    else:
-        print('추가 실패')
-  vbox.addStretch(1)
-  hbox = QHBoxLayout()
-  hbox.addWidget(scroll_area)
-  hbox.addLayout(vbox)
-  # change page to current page
-  main_widget = QWidget()
-  main_widget.setLayout(hbox)
-  stack.addWidget(main_widget)
-  stack.setCurrentIndex(stack.count() - 1)
+    def setup_word_list(self):
+        for word, meaning in self.word_data.items():
+            self.add_word_to_list(word, meaning, self.info_data[word], self.rate_data[word])
+            
+        self.word_info_layout.setAlignment(Qt.AlignTop)
+        self.word_rate_layout.setAlignment(Qt.AlignTop)
+        self.layout.addLayout(self.word_info_layout)
+        self.layout.addLayout(self.word_rate_layout)
+        
+    def add_word_to_list(self, word, meaning, info, rate):
+        # 단어 리스트 아이템 스타일 개선
+        word_container = QWidget()
+        word_layout = QHBoxLayout()
+        
+        word_info = QLabel(f"{word}: {meaning}")
+        word_info.setStyleSheet("font-size: 14px; font-weight: bold;")
+        
+        info_label = QLabel(f"({info})")
+        info_label.setStyleSheet("font-size: 12px; color: #666;")
+        
+        rate_label = QLabel(f"{int(rate)}%")
+        rate_label.setMinimumWidth(50)
+        
+        if int(rate) >= 90:
+            rate_label.setStyleSheet("color: #2ecc71; font-weight: bold;")
+        elif int(rate) >= 30:
+            rate_label.setStyleSheet("color: #f39c12; font-weight: bold;")
+        else:
+            rate_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            
+        word_layout.addWidget(word_info)
+        word_layout.addWidget(info_label)
+        word_layout.addStretch()
+        word_layout.addWidget(rate_label)
+        
+        word_container.setLayout(word_layout)
+        word_container.setStyleSheet("""
+            QWidget {
+                background: white;
+                border-radius: 5px;
+                padding: 8px;
+                margin: 2px;
+            }
+            QWidget:hover {
+                background: #f8f9fa;
+            }
+        """)
+        
+        self.word_info_layout.addWidget(word_container)
 
+    def setup_layout(self):
+        # 입력 폼 레이아웃
+        vbox = QVBoxLayout()
+        vbox.addStretch(1)
+        
+        widget_list = [
+            self.title_label, self.question_input, self.answer_input, 
+            self.info_input, self.add_btn, self.state_label, self.back_btn
+        ]
+        
+        for widget in widget_list:
+            if isinstance(widget, QLabel):
+                vbox.addWidget(widget)
+            elif isinstance(widget, QLineEdit):
+                hbox = QHBoxLayout()
+                hbox.addStretch(1)
+                hbox.addWidget(widget)
+                hbox.addStretch(1)
+                vbox.addLayout(hbox)
+            elif isinstance(widget, QPushButton):
+                widget.setMinimumSize(100, 30)
+                hbox = QHBoxLayout()
+                hbox.addStretch(1)
+                hbox.addWidget(widget)
+                hbox.addStretch(1)
+                vbox.addLayout(hbox)
+                
+        vbox.addStretch(1)
+        
+        # 메인 레이아웃
+        self.container_widget.setLayout(self.layout)
+        self.scroll_area.setWidget(self.container_widget)
+        
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.scroll_area)
+        hbox.addLayout(vbox)
+        
+        self.widget.setLayout(hbox)
+        self.stack.addWidget(self.widget)
+        self.stack.setCurrentIndex(self.stack.count() - 1)
 
-def add(question_input: QLineEdit, answer_input: QLineEdit, info_input: QLineEdit, state_label: QLabel, word_info_layout: QVBoxLayout, word_rate_layout: QVBoxLayout, game:dword.Game):
-  question = question_input.text()
-  answer = answer_input.text()
-  info = info_input.text()
-
-  question = question.strip()
-  answer = answer.strip()
-  info = info.strip()
-  if (question.replace(" ", "") == "" or answer.replace(" ", "") == ""):
-    state_label.setText("put the word")
-    state_label.setStyleSheet("color: red")
-  else:
-    add_result = game.add([question, answer, info])
-    if add_result == dword.State.SUCCESS:
-      word_info = QLabel(f"{question}: {answer} ")
-      word_rate = QLabel(f"0%")
-      word_rate.setStyleSheet("color: red;")
-      word_info_layout.addWidget(word_info)
-      word_rate_layout.addWidget(word_rate)
-      state_label.setText("Success!")
-      state_label.setStyleSheet("color: green")
-      question_input.setText("")
-      answer_input.setText("")
-      info_input.setText("")
-    elif add_result == dword.State.DUPLICATION:
-      state_label.setText("Exist word")
-      state_label.setStyleSheet("color: red")
-  question_input.setFocus()
-
+    def add_word(self):
+        question = self.question_input.text().strip()
+        answer = self.answer_input.text().strip()
+        info = self.info_input.text().strip()
+        
+        if not question.replace(" ", "") or not answer.replace(" ", ""):
+            self.state_label.setText("put the word")
+            self.state_label.setStyleSheet("color: red")
+            return
+            
+        add_result = self.game.add([question, answer, info])
+        
+        if add_result == dword.State.SUCCESS:
+            self.add_word_to_list(question, answer, info, 0)
+            self.state_label.setText("Success!")
+            self.state_label.setStyleSheet("color: green")
+            self.clear_inputs()
+        elif add_result == dword.State.DUPLICATION:
+            self.state_label.setText("Exist word")
+            self.state_label.setStyleSheet("color: red")
+            
+        self.question_input.setFocus()
+        
+    def clear_inputs(self):
+        self.question_input.setText("")
+        self.answer_input.setText("")
+        self.info_input.setText("")
+    def set_page(self):
+        self.stack.addWidget(self.widget)
+        self.stack.setCurrentIndex(self.stack.count() - 1)
 
 
 

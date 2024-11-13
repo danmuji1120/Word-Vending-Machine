@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 logging.basicConfig(level=logging.INFO)
 
 class Record:
+  # 클래스 변수 추가
+  MASTERY_THRESHOLD = 5  # 완벽히 외웠다고 판단하는 연속 정답 횟수
+  FORGET_THRESHOLD = 2   # 잊어버렸다고 판단하는 연속 오답 횟수
+
   def __init__(self, section_name) -> None:
     self.section_name = section_name
     self.path = "data/" + self.section_name + "/records.csv"
@@ -24,32 +28,62 @@ class Record:
           logging.info(f"{self.path} 파일이 생성되었습니다.")
   # data format {"apple": 1, "banana": 0, "cat": 1}
   # 1: correct, 0: incorrect, -1: no test
-  def get_rememeber_date(self): # 단어마다 완벽히 외운 날짜를 반환
-      # n회 이상 정답이 이어지면 완벽히 외웠다라고 가정
-      # 완벽히 외우고 정답률이 떨어진다면 외우지 못했다고 가정
-      # 따라서 마지막으로 정답이 이어졌을 때 최초로 정답이 n회 이어진 날짜를 저장
+  def get_remember_date(self):  # 메소드 이름 오타 수정
       result = {}
       data = self.load_file()
       data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d-%H-%M-%S")
-      date_data = {}
-      count_data = {}
-      if len(data.columns) > 1:
-        for word in data.columns[1:]:
-          count_data[word] = 0
-        for row in range(len(data)):
-          for word in data.columns[1:]:
-            if data.loc[row][word] == 1:
-              if count_data[word] < 5:
-                count_data[word] += 1
-                if count_data[word] == 5:
-                  date_data[word] = data.loc[row][0]
-            elif data.loc[row][word] == 0:
-              if (count_data[word] > 0):
-                count_data[word] -= 1
-      return date_data
+      
+      if len(data.columns) <= 1:
+          return result
+            
+      for word in data.columns[1:]:
+          consecutive_correct = 0
+          for idx, row in data.iterrows():
+              if row[word] == 1:
+                  consecutive_correct += 1
+                  if consecutive_correct == self.MASTERY_THRESHOLD:
+                      result[word] = row['date']
+                      break
+              elif row[word] == 0:
+                  consecutive_correct = 0
+                  
+      return result
 
-  def get_unnamed(self): # 단어별로 완벽히 외운 날짜, 다시 잊어버린 날짜를 반환
-      pass
+  def get_unnamed(self):
+      result = {}
+      data = self.load_file()
+      data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d-%H-%M-%S")
+      
+      if len(data.columns) <= 1:
+          return result
+            
+      for word in data.columns[1:]:
+          mastery_date = None
+          forget_dates = []
+          consecutive_correct = 0
+          consecutive_wrong = 0
+          
+          for idx, row in data.iterrows():
+              if row[word] == 1:
+                  consecutive_correct += 1
+                  consecutive_wrong = 0
+                  if consecutive_correct == self.MASTERY_THRESHOLD and not mastery_date:
+                      mastery_date = row['date']
+              elif row[word] == 0:
+                  consecutive_correct = 0
+                  consecutive_wrong += 1
+                  if consecutive_wrong == self.FORGET_THRESHOLD and mastery_date:
+                      forget_dates.append(row['date'])
+                      mastery_date = None
+                      
+          if mastery_date or forget_dates:
+              result[word] = {
+                  'mastery_date': mastery_date,
+                  'forget_dates': forget_dates
+              }
+              
+      return result
+
   def get_rate_all(self):
     data = self.load_file()
     result = {}

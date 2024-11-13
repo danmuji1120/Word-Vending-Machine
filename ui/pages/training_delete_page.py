@@ -1,119 +1,181 @@
-
 from PyQt5.QtWidgets import *
 import components
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import events
 import dword
-def set_training_delete_page(stack: QStackedLayout, game:dword.Game):
-  word_data = game.get_list()
-  info_data = game.get_info()
-  rate_data = game.get_rate_all()
-  scroll_area = QScrollArea()
-  scroll_area.setWidgetResizable(True)
-  container_widget = QWidget()
-  layout = QHBoxLayout()
-  # layout = QVBoxLayout()
-  word_info_layout = QVBoxLayout()
-  word_rate_layout = QVBoxLayout()
-  for word, meaning in word_data.items():
-    word_info = QLabel(f"{word}: {meaning} ({info_data[word]})")
-    word_rate = QLabel(f"{int(rate_data[word])}%")
-    if int(rate_data[word]) >= 90:
-       word_rate.setStyleSheet("color: green;")
-    elif int(rate_data[word]) >= 30:
-       word_rate.setStyleSheet("color: orange;")
-    else:
-       word_rate.setStyleSheet("color: red;")
-    word_info_layout.addWidget(word_info)
-    word_rate_layout.addWidget(word_rate)
-  word_info_layout.setAlignment(Qt.AlignTop)
-  word_rate_layout.setAlignment(Qt.AlignTop)
-  layout.addLayout(word_info_layout)
-  layout.addLayout(word_rate_layout)
-  container_widget.setLayout(layout)
-  scroll_area.setWidget(container_widget)
+from ui.styles.styles import TITLE_STYLE, INPUT_STYLE, BUTTON_STYLE
 
+def set_training_delete_page(stack: QStackedLayout):
+    train_delete_page = TrainingDeletePage(stack)
+    train_delete_page.set_page()
 
-  title_label = components.set_title_label("Delete")
-  # question_label = components.set_title_label(string="단어",sort="left")
-  word_input = QLineEdit()
-  word_input.setPlaceholderText("단어")
-  word_input.setMaximumSize(200, 20)
-  # answer_labe = components.set_title_label(string="뜻",sort="left")
-  add_btn = components.set_default_btn("Add")
-  add_btn.setShortcut(QKeySequence('return'))
-  add_btn.clicked.connect(lambda: delete(word_input, state_label, word_info_layout, word_rate_layout, game))
-  state_label = components.set_default_label("state")
+class TrainingDeletePage:
+    def __init__(self, stack) -> None:
+        self.stack = stack
+        self.game = dword.Game()
+        self.widget = QWidget()
+        
+        # 스크롤 영역 초기화
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.container_widget = QWidget()
+        self.layout = QHBoxLayout()
+        self.word_info_layout = QVBoxLayout()
+        self.word_rate_layout = QVBoxLayout()
 
-  back_btn = components.set_default_btn('back')
-  back_btn.setShortcut(QKeySequence('x'))
-  back_btn.clicked.connect(lambda: events.back_page(stack))
-  
-  vbox = QVBoxLayout()
-  vbox.addStretch(1)
-  widget_list = [title_label, word_input, add_btn, state_label, back_btn]
-  for i in widget_list:
-    print(i)
-    if isinstance(i, QLabel):
-        vbox.addWidget(i)
-    elif isinstance(i, QLineEdit):
-        hbox_line = QHBoxLayout()
-        hbox_line.addStretch(1)
-        hbox_line.addWidget(i)
-        hbox_line.addStretch(1)
-        vbox.addLayout(hbox_line)
-    elif isinstance(i, QPushButton):
-        i.setMinimumSize(100, 30)
-        hbox_btn = QHBoxLayout()
-        hbox_btn.addStretch(1)
-        hbox_btn.addWidget(i)
-        hbox_btn.addStretch(1)
-        vbox.addLayout(hbox_btn)
-    elif type(i) == list:
-        hbox_list = QHBoxLayout()
-        for j in i:
-            hbox_list.addWidget(j)
-        vbox.addLayout(hbox_list)
-    else:
-        print('추가 실패')
-  vbox.addStretch(1)
-  hbox = QHBoxLayout()
-  hbox.addWidget(scroll_area)
-  hbox.addLayout(vbox)
-  # change page to current page
-  main_widget = QWidget()
-  main_widget.setLayout(hbox)
-  stack.addWidget(main_widget)
-  stack.setCurrentIndex(stack.count() - 1)
+        # 게임 데이터 초기화
+        self.word_data = self.game.get_list()
+        self.info_data = self.game.get_info()
+        self.rate_data = self.game.get_rate_all()
+        
+        # UI 요소 초기화
+        self.init_ui()
+        self.setup_word_list()
+        self.setup_layout()
 
+    def init_ui(self):
+        self.title_label = components.set_title_label("단어 삭제")
+        self.title_label.setStyleSheet(TITLE_STYLE)
+        
+        self.word_input = QLineEdit()
+        self.word_input.setPlaceholderText("삭제할 단어를 입력하세요")
+        self.word_input.setMinimumSize(250, 35)
+        self.word_input.setStyleSheet(INPUT_STYLE)
+        
+        self.delete_btn = QPushButton("삭제")
+        self.delete_btn.setStyleSheet(BUTTON_STYLE)
+        self.delete_btn.setMinimumSize(120, 40)
+        self.delete_btn.setShortcut(QKeySequence('return'))
+        self.delete_btn.clicked.connect(self.delete_word)
+        
+        self.back_btn = QPushButton("뒤로")
+        self.back_btn.setStyleSheet(BUTTON_STYLE)
+        self.back_btn.setMinimumSize(120, 40)
+        self.back_btn.setShortcut(QKeySequence('x'))
+        self.back_btn.clicked.connect(lambda: events.back_page(self.stack))
+        
+        self.state_label = QLabel()
+        self.state_label.setAlignment(Qt.AlignCenter)
+        self.state_label.setStyleSheet("font-size: 14px; margin: 10px;")
 
-def delete(word_input: QLineEdit, state_label: QLabel, word_info_layout: QVBoxLayout, word_rate_layout: QVBoxLayout, game:dword.Game):
-  word = word_input.text()
-  word = word.strip()
-  if (word.replace(" ", "") == ""):
-    state_label.setText("put the word")
-    state_label.setStyleSheet("color: red")
-  else:
-    add_result = game.delete(word)
-    if add_result == dword.State.SUCCESS:
-      for i in range(word_info_layout.count()):
-        widget = word_info_layout.itemAt(i).widget()
-        widget_rate = word_rate_layout.itemAt(i).widget()
-        if widget and isinstance(widget, QLabel):  # QLabel만 확인
-            text = widget.text().split(":")[0]
-            if word == text:  # 텍스트에 word가 포함되면
-                widget.deleteLater()  # 해당 QLabel을 삭제
-                widget_rate.deleteLater()
-      # label = QLabel(f"{question}: {answer}")
-      # word_list.addWidget(label)
-      state_label.setText("Success!")
-      state_label.setStyleSheet("color: green")
-      word_input.setText("")
-    elif add_result == dword.State.DUPLICATION:
-      state_label.setText("No Exist Word")
-      state_label.setStyleSheet("color: red")
-  word_input.setFocus()
+    def setup_word_list(self):
+        for word, meaning in self.word_data.items():
+            self.add_word_to_list(word, meaning, self.info_data[word], self.rate_data[word])
+            
+        self.word_info_layout.setAlignment(Qt.AlignTop)
+        self.word_rate_layout.setAlignment(Qt.AlignTop)
+        self.layout.addLayout(self.word_info_layout)
+        self.layout.addLayout(self.word_rate_layout)
+
+    def add_word_to_list(self, word, meaning, info, rate):
+        word_container = QWidget()
+        word_layout = QHBoxLayout()
+        
+        word_info = QLabel(f"{word}: {meaning}")
+        word_info.setStyleSheet("font-size: 14px; font-weight: bold;")
+        
+        info_label = QLabel(f"({info})")
+        info_label.setStyleSheet("font-size: 12px; color: #666;")
+        
+        rate_label = QLabel(f"{int(rate)}%")
+        rate_label.setMinimumWidth(50)
+        
+        if int(rate) >= 90:
+            rate_label.setStyleSheet("color: #2ecc71; font-weight: bold;")
+        elif int(rate) >= 30:
+            rate_label.setStyleSheet("color: #f39c12; font-weight: bold;")
+        else:
+            rate_label.setStyleSheet("color: #e74c3c; font-weight: bold;")
+            
+        word_layout.addWidget(word_info)
+        word_layout.addWidget(info_label)
+        word_layout.addStretch()
+        word_layout.addWidget(rate_label)
+        
+        word_container.setLayout(word_layout)
+        word_container.setStyleSheet("""
+            QWidget {
+                background: white;
+                border-radius: 5px;
+                padding: 8px;
+                margin: 2px;
+            }
+            QWidget:hover {
+                background: #f8f9fa;
+            }
+        """)
+        
+        self.word_info_layout.addWidget(word_container)
+
+    def setup_layout(self):
+        vbox = QVBoxLayout()
+        vbox.addStretch(1)
+        
+        widget_list = [
+            self.title_label, self.word_input, 
+            self.delete_btn, self.state_label, self.back_btn
+        ]
+        
+        for widget in widget_list:
+            if isinstance(widget, QLabel):
+                vbox.addWidget(widget)
+            elif isinstance(widget, QLineEdit):
+                hbox = QHBoxLayout()
+                hbox.addStretch(1)
+                hbox.addWidget(widget)
+                hbox.addStretch(1)
+                vbox.addLayout(hbox)
+            elif isinstance(widget, QPushButton):
+                hbox = QHBoxLayout()
+                hbox.addStretch(1)
+                hbox.addWidget(widget)
+                hbox.addStretch(1)
+                vbox.addLayout(hbox)
+                
+        vbox.addStretch(1)
+        
+        self.container_widget.setLayout(self.layout)
+        self.scroll_area.setWidget(self.container_widget)
+        
+        hbox = QHBoxLayout()
+        hbox.addWidget(self.scroll_area)
+        hbox.addLayout(vbox)
+        
+        self.widget.setLayout(hbox)
+
+    def delete_word(self):
+        word = self.word_input.text().strip()
+        
+        if not word.replace(" ", ""):
+            self.state_label.setText("단어를 입력하세요")
+            self.state_label.setStyleSheet("color: red")
+            return
+            
+        delete_result = self.game.delete(word)
+        
+        if delete_result == dword.State.SUCCESS:
+            # 단어 목록에서 삭제된 단어 제거
+            for i in reversed(range(self.word_info_layout.count())):
+                widget = self.word_info_layout.itemAt(i).widget()
+                if widget:
+                    text = widget.findChild(QLabel).text().split(":")[0]
+                    if word == text:
+                        widget.deleteLater()
+                        break
+                        
+            self.state_label.setText("삭제 성공!")
+            self.state_label.setStyleSheet("color: green")
+            self.word_input.setText("")
+        else:
+            self.state_label.setText("존재하지 않는 단어입니다")
+            self.state_label.setStyleSheet("color: red")
+            
+        self.word_input.setFocus()
+
+    def set_page(self):
+        self.stack.addWidget(self.widget)
+        self.stack.setCurrentIndex(self.stack.count() - 1)
 
 
 

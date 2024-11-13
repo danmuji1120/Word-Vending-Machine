@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         main_widget = QWidget()
         main_widget.setLayout(self.stack_layout)
         self.setCentralWidget(main_widget)
-        self.setGeometry(100, 100, 720, 360)
+        self.setGeometry(100, 100, 720, 600)
         self.show()
     
     def getStack(self) -> QStackedLayout:
