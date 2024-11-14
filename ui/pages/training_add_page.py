@@ -24,7 +24,7 @@ class TrainingAddPage:
         self.game = dword.Game()
         self.word_data = self.game.get_list()
         self.info_data = self.game.get_info()
-        self.rate_data = self.game.get_rate_all()
+        self.rate_data = self.game.get_rate()
         
         # UI 요소 초기화
         self.init_ui()
@@ -69,6 +69,33 @@ class TrainingAddPage:
         self.state_label.setStyleSheet("font-size: 14px; margin: 10px;")
 
     def setup_word_list(self):
+        # 전체 단어 개수와 추가 가능한 단어 개수를 표시하는 레이아웃
+        counts_layout = QHBoxLayout()
+        
+        total_words_label = QLabel(f"전체 단어 수: {len(self.word_data)}개")
+        total_words_label.setStyleSheet("""
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 10px;
+        """)
+        
+        available_words = self.game.get_available_word_count()
+        available_label = QLabel(f"추가 가능한 단어 수: {available_words}개")
+        available_label.setStyleSheet("""
+            font-size: 16px;
+            font-weight: bold;
+            color: #27ae60;
+            padding: 10px;
+        """)
+        
+        counts_layout.addWidget(total_words_label)
+        counts_layout.addWidget(available_label)
+        counts_layout.addStretch()
+        
+        self.word_info_layout.addLayout(counts_layout)
+
+        # 기존 코드
         for word, meaning in self.word_data.items():
             self.add_word_to_list(word, meaning, self.info_data[word], self.rate_data[word])
             
@@ -160,12 +187,17 @@ class TrainingAddPage:
         self.stack.setCurrentIndex(self.stack.count() - 1)
 
     def add_word(self):
+        if self.game.get_available_word_count() <= 0:
+            self.state_label.setText("더 이상 단어를 추가할 수 없습니다")
+            self.state_label.setStyleSheet("color: red")
+            return
+            
         question = self.question_input.text().strip()
         answer = self.answer_input.text().strip()
         info = self.info_input.text().strip()
         
         if not question.replace(" ", "") or not answer.replace(" ", ""):
-            self.state_label.setText("put the word")
+            self.state_label.setText("단어를 입력하세요")
             self.state_label.setStyleSheet("color: red")
             return
             
@@ -173,11 +205,22 @@ class TrainingAddPage:
         
         if add_result == dword.State.SUCCESS:
             self.add_word_to_list(question, answer, info, 0)
-            self.state_label.setText("Success!")
+            # 단어 수 레이블들 업데이트
+            counts_layout = self.word_info_layout.itemAt(0)
+            total_label = counts_layout.itemAt(0).widget()
+            available_label = counts_layout.itemAt(1).widget()
+            
+            total_label.setText(f"전체 단어 수: {len(self.word_data) + 1}개")
+            available_label.setText(f"추가 가능한 단어 수: {self.game.get_available_word_count()}개")
+            
+            self.state_label.setText("추가되었습니다!")
             self.state_label.setStyleSheet("color: green")
             self.clear_inputs()
         elif add_result == dword.State.DUPLICATION:
-            self.state_label.setText("Exist word")
+            self.state_label.setText("이미 존재하는 단어입니다")
+            self.state_label.setStyleSheet("color: red")
+        elif add_result == dword.State.FULL:
+            self.state_label.setText("더 이상 단어를 추가할 수 없습니다")
             self.state_label.setStyleSheet("color: red")
             
         self.question_input.setFocus()

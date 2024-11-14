@@ -93,22 +93,25 @@ class Record:
         accuracy = (correct_answers / total_attempts) if total_attempts > 0 else 0
         result[column] = accuracy * 100
     return result
-  def get_rate(self, days:int=10, count:int=10): # 최근 days일 이내의 최소 count개 이상의 정답률의 평균을 반환
+  def get_rate(self, days:int=10, count:int=5): # 최근 days일 이내의 count개의 정답률의 평균을 반환
       data = self.load_file()
       data['date'] = pd.to_datetime(data['date'], format="%Y-%m-%d-%H-%M-%S")
 
       current_date = datetime.now()
       ten_days_ago = current_date - timedelta(days=days)
       recent_data = data[data['date'] >= ten_days_ago]
+      # print(recent_data)
 
       result = {}
       for column in recent_data.columns[1:]:
           correct_answers = (recent_data[column] == 1).sum()
           total_attempts = (recent_data[column] != -1).sum()
-          if total_attempts < count:
-              accuracy = correct_answers / count
+          if total_attempts == 0:
+              accuracy = 0
           else:
-              accuracy = (correct_answers / total_attempts) if total_attempts > 0 else 0
+              accuracy = correct_answers / count
+              if accuracy >= 1:
+                  accuracy = 1
           result[column] = accuracy * 100
       return result
 

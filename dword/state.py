@@ -11,4 +11,5 @@ class State(Enum):
   WRONG = 8 # 오답
   END = 9 # 게임 종료
   EMPTY = 10 # 비어있어서 실패
+  FULL = 11 # 정답률 80% 미만인 단어가 20개 이상이기 때문에 실패
   # Already in progress

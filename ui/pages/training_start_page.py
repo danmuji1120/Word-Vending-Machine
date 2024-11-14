@@ -41,7 +41,7 @@ class TrainingStartPage:
         self.answer_input.setStyleSheet(INPUT_STYLE)
 
         # 상태 라벨 설정
-        self.state_label = components.set_default_label("")
+        self.state_label = components.set_default_label("------")
         self.state_label.setAlignment(Qt.AlignCenter)
         self.state_label.setStyleSheet("font-size: 14px; margin: 10px;")
 
@@ -118,7 +118,7 @@ class TrainingStartPage:
                 self.process_answer()
             elif self.processing == False:
                 self.next()
-                self.state_label.setText("")
+                self.state_label.setText("------")
                 self.state_label.setStyleSheet("color: black;")
         else:
             self.start_game()
@@ -140,12 +140,12 @@ class TrainingStartPage:
         if answer_result == dword.State.CORRECT:
             self.correct_count += 1
             self.update_state_label(
-                f"✓ {self.game.get_answer()}\n\n{self.info_data[self.game.get_question()]}", 
+                f"✓ {self.game.get_answer()} ({self.info_data[self.game.get_question()]})", 
                 "green"
             )
         elif answer_result == dword.State.WRONG:
             self.update_state_label(
-                f"✗ {self.game.get_answer()}\n\n{self.info_data[self.game.get_question()]}", 
+                f"✗ {self.game.get_answer()} ({self.info_data[self.game.get_question()]})", 
                 "red"
             )
         self.answer_input.setText("")
