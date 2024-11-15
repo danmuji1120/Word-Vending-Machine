@@ -43,7 +43,25 @@ class WordManager:
             data.loc[len(data)] = word
             data.to_csv(self.path, index=None)
             logging.info(f"'{word[1]}'이(가) 추가되었습니다.")
-
+    def add(self, question: str, answers: str, info: str):
+        current_time = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        word = [current_time, question, answers, info]
+        logging.debug(f"Adding word: {word}")
+        
+        data = self.load_file()
+        if self.is_word(word[1]):
+            logging.warning(f"'{word[1]}'은(는) 이미 존재합니다. 추가하지 않습니다.")
+        else:
+            data.loc[len(data)] = word
+            data.to_csv(self.path, index=None)
+            logging.info(f"'{word[1]}'이(가) 추가되었습니다.")
+    def add_answer(self, question: str, answer: str):
+        data = self.load_file()
+        index = self.get_index(question)
+        if index is not None:
+            data.loc[index, "answer"] += f",{answer}"
+            data.to_csv(self.path, index=None)
+            logging.info(f"'{answer}' 답변이 '{question}'에 추가되었습니다.") 
     def delete(self, word: str):
         index = self.get_index(word)
         if index is not None:

@@ -1,3 +1,4 @@
+from typing import List
 from .word_manager import WordManager
 from .recordManager import Record
 from .state import State
@@ -14,7 +15,7 @@ class Game:
     self.processing = False
     self.section_name = section_name
     self.queue = Queue()
-    self.data = {}
+    self.question_answer_dict = {}
     self.scores = {}
     self.current_question = ""
     self.question_tag = question_tag
@@ -60,19 +61,20 @@ class Game:
   def get_answer(self):
     """현재 문제의 정답 반환"""
     if self.processing:
-      return self.data[self.current_question]
+      return self.question_answer_dict[self.current_question]
     else:
       return State.NO_PROCESS
 
   def answer(self, user_answer: str) -> State:
     """사용자 답변 검증"""
     if not self.processing:
-      return State.NO_PROCESS
+        return State.NO_PROCESS
 
-    correct = self.data[self.current_question].replace(" ", "")
+    correct_answers = [answer.strip() for answer in self.question_answer_dict[self.current_question].split(',')]
     user_answer = user_answer.replace(" ", "")
     
-    is_correct = correct == user_answer
+    # 여러 정답 중 하나라도 일치하면 정답 처리
+    is_correct = any(answer.replace(" ", "") == user_answer for answer in correct_answers)
     self.scores[self.current_question] = 1 if is_correct else 0
     
     return State.CORRECT if is_correct else State.WRONG
@@ -83,8 +85,8 @@ class Game:
     if self.processing:
       return State.ALREADY
     
-    self.data = self.word_manager.get_list()
-    if not self.data:
+    self.question_answer_dict = self.word_manager.get_list()
+    if not self.question_answer_dict:
       return State.NO_DATA
 
     result = self.set_question()
@@ -111,8 +113,8 @@ class Game:
   # === 점수 및 기록 관리 ===
   def get_rate_base(self, rate_func) -> dict:
     """정답률 계산 기본 로직"""
-    self.data = self.word_manager.get_list()
-    keys = self.data.keys()
+    self.question_answer_dict = self.word_manager.get_list()
+    keys = self.question_answer_dict.keys()
     result = {key: 0 for key in keys}
     added_data = rate_func()
     result.update({k: v for k, v in added_data.items() if k in keys})
@@ -151,7 +153,7 @@ class Game:
     low_score_count = sum(1 for rate in correct_rate_data.values() if rate < MAX_RATE)
     return low_score_count
 
-  def add(self, word:list):
+  def add(self, question: str, answers: str, info: str):
     """새 단어 추가"""
     if self.processing:
         return State.ALREADY
@@ -159,12 +161,15 @@ class Game:
         if self.get_available_word_count() <= 0:
             return State.FULL
             
-        if not self.word_manager.is_word(word[0]):
-            self.word_manager.add(word)
+        if not self.word_manager.is_word(question):
+            self.word_manager.add(question, answers, info)
             return State.SUCCESS
         else:
             return State.DUPLICATION
-
+  def add_answer(self, question: str, answer: str):
+    """단어 답변 추가"""
+    self.word_manager.add_answer(question, answer)
+    return State.SUCCESS
   def delete(self, word:str):
     """단어 삭제"""
     if self.processing:

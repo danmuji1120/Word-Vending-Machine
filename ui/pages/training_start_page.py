@@ -20,6 +20,7 @@ class TrainingStartPage:
         self.count = 0
         self.correct_count = 0
         self.processing = False
+        self.last_answer = None
 
         self.init_ui()
         self.setup_layout()
@@ -101,17 +102,81 @@ class TrainingStartPage:
         self.stack.addWidget(self.widget)
         self.stack.setCurrentIndex(self.stack.count() - 1)
 
-    def set_correct(self): # 강제 정답 처리
+    def set_correct(self):
         word = self.game.get_question()
         score_result = self.game.set_score(word, 1)
+        
         if score_result == dword.State.SUCCESS:
             self.correct_count += 1
-            self.state_label.setText(f"{word}: 정답 처리")
-            self.state_label.setStyleSheet("color: green;")
+            
+            if self.last_answer:
+                # 이전 답변을 QLineEdit에 미리 입력
+                dialog = QDialog(self.widget)
+                dialog.setWindowTitle('정답 추가')
+                
+                layout = QVBoxLayout()
+                
+                label = QLabel(f'방금 입력한 "{self.last_answer}"를 정답으로 추가하시겠습니까?')
+                layout.addWidget(label)
+                
+                answer_input = QLineEdit()
+                answer_input.setText(self.last_answer)
+                layout.addWidget(answer_input)
+                
+                button_box = QDialogButtonBox(
+                    QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+                )
+                button_box.accepted.connect(dialog.accept)
+                button_box.rejected.connect(dialog.reject)
+                layout.addWidget(button_box)
+                
+                dialog.setLayout(layout)
+                
+                if dialog.exec_() == QDialog.Accepted:
+                    new_answer = answer_input.text().strip()
+                    if new_answer:
+                        self.game.add_answer(word, new_answer)
+                        self.state_label.setText(f"{word}: 정답 처리 (새로운 정답 '{new_answer}' 추가됨)")
+                        self.last_answer = None
+                        return
+            
+            # 다른 정답 추가를 위한 QLineEdit 다이얼로그
+            dialog = QDialog(self.widget)
+            dialog.setWindowTitle('정답 추가')
+            
+            layout = QVBoxLayout()
+            
+            label = QLabel('이 단어에 대한 다른 정답을 추가하시겠습니까?')
+            layout.addWidget(label)
+            
+            answer_input = QLineEdit()
+            layout.addWidget(answer_input)
+            
+            button_box = QDialogButtonBox(
+                QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+            )
+            button_box.accepted.connect(dialog.accept)
+            button_box.rejected.connect(dialog.reject)
+            layout.addWidget(button_box)
+            
+            dialog.setLayout(layout)
+            
+            if dialog.exec_() == QDialog.Accepted:
+                new_answer = answer_input.text().strip()
+                if new_answer:
+                    self.game.add_answer(word, new_answer)
+                    self.state_label.setText(f"{word}: 정답 처리 (새로운 정답 '{new_answer}' 추가됨)")
+                    self.state_label.setStyleSheet("color: green;")
+                else:
+                    self.state_label.setText(f"{word}: 정답 처리")
+                    self.state_label.setStyleSheet("color: green;")
+            else:
+                self.state_label.setText(f"{word}: 정답 처리")
+                self.state_label.setStyleSheet("color: green;")
+            
         elif score_result == dword.State.NO_EXIST:
             self.state_label.setText(f"{word}: 정답 실패")
             self.state_label.setStyleSheet("color: red;")
-           
     def handle_submit(self):
         if self.game.is_start():
             if self.processing == True:
@@ -136,6 +201,7 @@ class TrainingStartPage:
             self.processing = False
     def process_answer(self):
         answer = self.answer_input.text()
+        self.last_answer = answer
         answer_result = self.game.answer(answer)
         if answer_result == dword.State.CORRECT:
             self.correct_count += 1
