@@ -24,10 +24,17 @@ class Game:
     self.answer_tag = answer_tag
     self.word_manager = WordManager(self.section_name)
     self.record = Record(self.section_name)
+    self.analysis = Analysis(self.word_manager, self.record)
     self.format = (question_tag, answer_tag)
     self.question_list = []
     self.logger = logging.getLogger(__name__)
     self.logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러가 있는지 확인하고 제거
+    if self.logger.handlers:
+        self.logger.handlers.clear()
+        
+    # 새 핸들러 추가
     handler = logging.StreamHandler()
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     handler.setFormatter(formatter)
@@ -42,55 +49,55 @@ class Game:
     """남은 문제 수 반환"""
     return self.queue.qsize()
 
-  # === 문제 및 답변 관리 ===
-  def _get_low_score_words(self) -> List[str]:
-    """정답률이 낮은 단어들을 추출하는 함수"""
-    # 정답률 데이터 가져오기
-    correct_rate_data = self.get_rate()
-    keys = self.word_manager.get_list().keys()
-    
-    # 현재 단어장에 존재하는 단어들 중 정답률이 낮은 것들만 필터링
-    low_score_words = []
-    for word, rate in correct_rate_data.items():
-        if word in keys:
-            low_score_words.append((word, rate))
-    
-    # 정답률 순으로 정렬
-    low_score_words.sort(key=lambda x: x[1])
-    
-    result = []
-    for word, _ in low_score_words:
-        result.append(word)
-    
-    return result
-
   def set_question(self) -> State:
     """정답률이 낮은 단어들로 문제 목록 생성"""
-    low_score_words = self._get_low_score_words()
-    analysis = Analysis()
-    unmemorized_words = analysis.get_unmemorized_words(self.record.load_file())
+    unmemorized_words = self.analysis.get_not_memorized_words()
+    review_words = self.analysis.get_words_for_review()
     self.logger.info(f"unmemorized_words: {unmemorized_words}")
-    self.logger.info(f"low_score_words: {low_score_words}")
+    self.logger.info(f"review_words: {review_words}")
 
+    # 암기되지 않은 단어들을 우선 추가
+    selected_unmemorized_count = 0
     for word in unmemorized_words:
         if word not in self.question_list:
+            selected_unmemorized_count += 1
             self.question_list.append(word)
         if len(self.question_list) >= MAX_COUNT:
-          break
-    for word in low_score_words:
+            break
+    
+    # 남은 공간이 있으면 복습이 필요한 단어들 추가
+    selected_review_count = 0
+    if len(self.question_list) < MAX_COUNT:
+        for word in review_words:
+            if word not in self.question_list:
+                selected_review_count += 1
+                self.question_list.append(word)
+            if len(self.question_list) >= MAX_COUNT:
+                break
+    all_words = self.word_manager.get_word_list()
+    selected_memorized_count = 0
+    for word in all_words:
+        if len(self.question_list) >= MAX_COUNT:
+            break
         if word not in self.question_list:
-            self.question_list.append(word)
-        if len(self.question_list) >= MAX_COUNT:
-          break
+           self.question_list.append(word)
+           selected_memorized_count += 1
+    memorized_count = self.analysis.get_number_of_memorized_words()
+    unmemorized_count = self.analysis.get_number_of_not_memorized_words()
+    review_count = self.analysis.get_number_of_review_words()
+    
+    self.logger.info(f"암기된 단어 중 선택된 단어 수: {selected_memorized_count}/{memorized_count}")
+    self.logger.info(f"암기되지 않은 단어 중 선택된 단어 수: {selected_unmemorized_count}/{unmemorized_count}")
+    self.logger.info(f"복습이 필요한 단어 중 선택된 단어 수: {selected_review_count}/{review_count}")
     
     if not self.question_list:
         return State.NO_DATA
     
-    self.logger.info(f"question_list: {self.question_list}")
+    self.logger.info(f"문제 목록: {self.question_list}")
     
     # 문제 목록을 랜덤하게 섞기
     random.shuffle(self.question_list)
-    self.logger.info(f"random_question_list: {self.question_list}")
+    self.logger.info(f"섞은 문제 목록: {self.question_list}")
         
     for word in self.question_list:
         self.queue.put(word)
@@ -197,9 +204,9 @@ class Game:
   # === 단어 관리 ===
   def get_available_word_count(self) -> int:
     """추가 가능한 단어 수 확인"""
-    correct_rate_data = self.get_rate()
-    low_score_count = sum(1 for rate in correct_rate_data.values() if rate < MAX_RATE)
-    return max(0, MAX_COUNT - low_score_count)
+    unmemorized_count = self.analysis.get_number_of_not_memorized_words()
+    review_count = self.analysis.get_number_of_review_words()
+    return max(0, MAX_COUNT - unmemorized_count - review_count)
   
   def get_unmemorized_word_count(self) -> int:
     """암기되지 않은 단어 수 확인"""
@@ -255,7 +262,7 @@ class Game:
       return self.word_manager.get_info()
 
   def get_question_tag(self):
-    """문제 태그 반환"""
+    """문제 ��그 반환"""
     return self.format[0]
 
   def get_answer_tag(self):

@@ -1,124 +1,237 @@
 import pandas as pd
+from dword.word_manager import WordManager
+from dword.recordManager import Record
+
+from datetime import datetime, timedelta
 
 class Analysis:
-    def calculate_word_accuracy(self, df: pd.DataFrame, ascending: bool = None):
-        # 날짜 열을 제외한 모든 단어 열에 대해 정답률 계산
-        accuracies = {}
-        
-        for column in df.columns[1:]:  # 첫 번째 열(날짜)을 제외
-            valid_answers = df[column][df[column] != -1]
-            correct = (valid_answers == 1).sum()
-            total_attempts = len(valid_answers)
-            
-            accuracy = (correct / total_attempts * 100) if total_attempts > 0 else 0
-            accuracies[column] = accuracy
-        
-        result_df = pd.DataFrame({
-            'word': accuracies.keys(),
-            'accuracy': accuracies.values()
-        })
-        
-        if ascending is True:
-            return result_df.sort_values('accuracy', ascending=True)
-        elif ascending is False:
-            return result_df.sort_values('accuracy', ascending=False)
-        return result_df
+    """
+    단어 학습 분석을 위한 클래스
+    
+    주요 함수들:
+    - get_word_memory_history() -> dict: 각 날짜별 단어들의 암기/망각 상태 기록을 반환
+    - get_memorized_words() -> list[str]: 현재 암기된 단어들의 리스트 반환
+    - get_number_of_memorized_words() -> int: 암기된 단어의 총 개수 반환
+    - get_not_memorized_words() -> list[str]: 아직 암기되지 않은 단어들의 리스트 반환
+    - get_number_of_not_memorized_words() -> int: 암기되지 않은 단어의 총 개수 반환
+    - get_average_accuracy(days=None) -> pd.DataFrame: 지정된 기간 동안의 단어별 평균 정답률 반환
+    - get_last_memorized_date() -> dict: 각 암기된 단어의 마지막 학습 날짜 반환
+    - get_words_for_review() -> list[str]: 복습이 필요한 단어 리스트 반환 (2^n일 주기로 복습)
+    - get_number_of_review_words() -> int: 복습이 필요한 단어의 총 개수 반환
+    - get_cumulative_daily_memorized_word_count() -> dict: 처음 데이터부터 오늘까지 각 날짜별로 외운 단어의 누적 개수를 반환
+    - get_daily_memorized_word_count() -> dict: 각 날짜별로 그날 새롭게 외운 단어의 개수를 반환
+    """
+    
+    def __init__(self, word_manager: WordManager, record_manager: Record):
+        self.word_manager = word_manager
+        self.record_manager = record_manager
 
-    def calculate_memorized_date(self, df: pd.DataFrame) -> pd.DataFrame:
-        memorized_dates = {}
+    # 단어들의 외운 날짜 및 상태를 반환
+    def get_word_memory_history(self) -> dict:
+        df = self.record_manager.load_file()
+
+        # 날짜 범위 생성
+        first_date = pd.to_datetime(df['date'].iloc[0], format='%Y-%m-%d-%H-%M-%S')
+        today = pd.Timestamp.now()
+        date_range = pd.date_range(start=first_date.date(), end=today.date(), freq='D')
         
+        # 날짜별 딕셔너리 초기화
+        memorized_dates = {date.strftime('%Y-%m-%d'): {'memorized': [], 'forgotten': []} for date in date_range}
+
         for word in df.columns[1:]:
             correct_count = 0
             consecutive_wrong = 0
             memorized = False
-            
             for date, result in zip(df['date'], df[word]):
-                if result == 1:
+                date = pd.to_datetime(date, format='%Y-%m-%d-%H-%M-%S')
+                if result == 1 and not memorized:
                     correct_count += 1
-                    consecutive_wrong = 0
+                    if correct_count >= 5:
+                        memorized = True
+                        memorized_dates[date.strftime('%Y-%m-%d')]['memorized'].append(word)
                 elif result == 0:
                     consecutive_wrong += 1
                     if consecutive_wrong >= 2:
                         correct_count = 0
                         consecutive_wrong = 0
-                
-                if correct_count >= 5 and not memorized:
-                    memorized_dates[word] = pd.to_datetime(date, format='%Y-%m-%d-%H-%M-%S')
-                    memorized = True
-        return pd.DataFrame({
-            'word': memorized_dates.keys(),
-            'memorized_date': memorized_dates.values()
-        })
+                        if memorized:
+                            memorized = False
+                            correct_count = 0
+                            memorized_dates[date.strftime('%Y-%m-%d')]['forgotten'].append(word)
 
-    def get_memorized_count_by_day(self, df: pd.DataFrame):
-        memorized_df = self.calculate_memorized_date(df)
-        if memorized_df.empty:
-            return pd.Series()
+        return memorized_dates
+        
+    # 외운 단어들의 리스트를 반환
+    def get_memorized_words(self) -> list[str]:
+        history = self.get_word_memory_history()
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 모든 날짜에 대해 memorized와 forgotten 상태를 추적
+        memorized_set = set()
+        for date, status in history.items():
+            memorized_set.update(status['memorized'])
+            memorized_set.difference_update(status['forgotten'])
+        return list(memorized_set)
+    
+    # 외운 단어의 수를 반환
+    def get_number_of_memorized_words(self) -> int:
+        """
+        외운 단어의 수를 반환
+        """
+        return len(self.get_memorized_words())
+    
+    # 외우지 못한 단어들의 리스트를 반환
+    def get_not_memorized_words(self) -> list[str]:
+        """
+        외우지 못한 단어들의 리스트를 반환
+        """
+        memorized_words = set(self.get_memorized_words())
+        all_words = set(self.word_manager.get_word_list())
+        return list(all_words - memorized_words)
+    
+    # 외우지 못한 단어의 수를 반
+    def get_number_of_not_memorized_words(self) -> int:
+        """
+        외우지 못한 단어의 수를 반환
+        """
+        return len(self.get_not_memorized_words())
+
+    # days가 주어지면 days일 내에서 학습한 단어의 평균 정답률을 반환
+    # day가 주어지지 않으면 전체 데이터에서 평균 정답률을 반환
+    def get_average_accuracy(self, days: int = None) -> pd.DataFrame:
+        words = self.word_manager.get_word_list()
+        records = self.record_manager.load_file()
+        if days is not None:
+            current_date = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            records['date'] = pd.to_datetime(records['date'], format='%Y-%m-%d-%H-%M-%S')
+            cutoff_date = (pd.to_datetime(current_date, format='%Y-%m-%d-%H-%M-%S') - timedelta(days=days))
+            records = records[records["date"] >= cutoff_date]
+        result = {}
+        for word in words:
+            word_values = records[word][records[word] != -1]
+            if len(word_values) > 0:
+                accuracy = int(word_values.mean() * 100)
+                result[word] = accuracy
+            else:
+                result[word] = 0
+        return result
+    
+    # 외운 단어들의 마지막 학습 날짜를 반환
+    def get_last_memorized_date(self) -> dict:
+        """
+        외운 단어들의 마지막 학습 날짜를 반환합니다.
+        Returns:
+            dict: {단어: 마지막_학습_날짜} 형태의 딕셔너리
+        """
+        df = self.record_manager.load_file()
+        memorized_dates = self.get_word_memory_history()
+        dates = list(memorized_dates.keys())
+        memorized_words = set(self.get_memorized_words())
+        last_memorized_date = {}
+        for date in reversed(dates):
+            memorized_words.difference_update(memorized_dates[date]['memorized'])
+            for word in memorized_dates[date]['memorized']:
+                if word not in last_memorized_date:
+                    last_memorized_date[word] = date
+            if len(memorized_words) == 0:
+                break
+        return last_memorized_date
+    
+    # 복습이 필요한 단어 리스트를 반환
+    def get_words_for_review(self) -> list[str]:
+        """
+        복습이 필요한 단어 리스트를 반환합니다.
+        복습 주기는 다음과 같이 증가합니다:
+        - 1차 복습: 1일 후
+        - 2차 복습: 2일 후
+        - 3��� 복습: 4일 후
+        - 4차 복습: 8일 후
+        이런 식으로 2의 제곱으로 증가합니다.
+        """
+        df = self.record_manager.load_file()
+        words_last_memorized_date = self.get_last_memorized_date()
+  
+        review_words = []
+        for word, last_memorized_date in words_last_memorized_date.items():
+            # 복습 횟수
             
-        # 날짜만 추출하여 Series 생성
-        dates = memorized_df['memorized_date'].dt.date
-        # value_counts()를 사용하여 각 날짜별 카운트 계산
-        daily_counts = dates.value_counts().sort_index()
-        
-        # 전체 날짜 범위 생성
-        date_range = pd.date_range(
-            start=daily_counts.index.min(),
-            end=pd.Timestamp.today().date(),
-            freq='D'
-        )
-        
-        # 전체 날짜 범위에 대해 Series 생성 (없는 날짜는 0으로 채움)
-        result = pd.Series(0, index=date_range).add(daily_counts, fill_value=0)
-        return result.astype(int)  # int형으로 변환
+            # 해당 단어의 테스트 기록 가져오기
+            word_records = df[df[word] != -1][['date', word]]
+            word_records = word_records[word_records['date'] > last_memorized_date]
+            if len(word_records) == 0:
+                continue
 
-    def get_memorized_count_by_month(self, df: pd.DataFrame):
-        daily_counts = self.get_memorized_count_by_day(df)
-        if daily_counts.empty:
-            return pd.Series()
+            date_records = {}
+            # for date in word_records['date']:
+            for date, result in zip(word_records['date'], word_records[word]):
+                # date 형식: "%Y-%m-%d-%H-%M-%S"의 문자열을 "%Y-%m-%d"의 문자열로 변환
+                new_date = date[:10]
+                date_records[new_date] = result
+            last_memorized_date = datetime.strptime(last_memorized_date, '%Y-%m-%d')
+            last_review_date = last_memorized_date
+            review_count = 0
+            for date, result in date_records.items():
+                if result == 1:
+                    review_count += 1
+                    last_review_date = date
             
-        return daily_counts.resample('ME').last()
-
-    def get_memorized_count_by_year(self, df: pd.DataFrame):
-        daily_counts = self.get_memorized_count_by_day(df)
-        if daily_counts.empty:
-            return pd.Series()
+            today = datetime.now()
+            last_review_date = datetime.strptime(last_review_date, '%Y-%m-%d')
+            review_date = last_review_date + timedelta(days=2 ** review_count)
+            if review_date <= today:
+                review_words.append(word)
+        return review_words
+    def get_number_of_review_words(self) -> int:
+        """
+        복습이 필요한 단어의 수를 반환합니다.
+        """
+        return len(self.get_words_for_review())
+        
+    def get_cumulative_daily_memorized_word_count(self) -> dict:
+        """
+        처음 데이터부터 오늘까지 각 날짜별로 외운 단어의 누적 개수를 반환합니다.
+        Returns:
+            dict: {날짜: 누적_외운_단어_수} 형태의 딕셔너리
+        """
+        df = self.record_manager.load_file()
+        memory_history = self.get_word_memory_history()
+        
+        # 날짜 범위 생성
+        first_date = pd.to_datetime(df['date'].iloc[0], format='%Y-%m-%d-%H-%M-%S')
+        today = pd.Timestamp.now()
+        date_range = pd.date_range(start=first_date.date(), end=today.date(), freq='D')
+        
+        # 날짜별 누적 외운 단어 수를 저장할 딕셔너리
+        daily_count = {}
+        memorized_words = set()
+        
+        for date in date_range:
+            date_str = date.strftime('%Y-%m-%d')
+            if date_str in memory_history:
+                # 해당 날짜에 새로 외운 단어 추가
+                memorized_words.update(memory_history[date_str]['memorized'])
+                # 해당 날짜에 잊어버린 단어 제거
+                memorized_words.difference_update(memory_history[date_str]['forgotten'])
             
-        return daily_counts.resample('YE').last()
-
-    def get_cumulative_memorized_count(self, df: pd.DataFrame):
-        daily_counts = self.get_memorized_count_by_day(df)
-        if daily_counts.empty:
-            return pd.Series()
+            daily_count[date_str] = len(memorized_words)
+            
+        return daily_count
         
-        # cumsum()을 사용하여 누적 합계 계산
-        cumulative_counts = daily_counts.cumsum()
-        return cumulative_counts
-
-    def get_unmemorized_words(self, df: pd.DataFrame) -> list:
-        # 외운 단어 목록 가져오기
-        memorized_df = self.calculate_memorized_date(df)
-        memorized_words = set(memorized_df['word'])
+    def get_daily_memorized_word_count(self) -> dict:
+        """
+        각 날짜별로 그날 새롭게 외운 단어의 개수를 반환합니다.
+        Returns:
+            dict: {날짜: 그날_외운_단어_수} 형태의 딕셔너리
+        """
+        memory_history = self.get_word_memory_history()
         
-        # 전체 단어 목록 (날짜 열 제외)
-        all_words = set(df.columns[1:])
+        # 날짜별 새로 외운 단어 수를 저장할 딕셔너리
+        daily_count = {}
         
-        # 외우지 못한 단어 찾기
-        unmemorized_words = all_words - memorized_words
+        for date, status in memory_history.items():
+            # 해당 날짜에 새로 외운 단어의 개수
+            daily_count[date] = len(status['memorized'])
+            
+        return daily_count
         
-        # 리스트로 변환하여 반환
-        return list(unmemorized_words)
-
-    def get_memorized_words(self, df: pd.DataFrame) -> list:
-        # 외운 단어 목록 가져오기
-        memorized_df = self.calculate_memorized_date(df)
         
-        # 단어 리스트로 변환하여 반환
-        return memorized_df['word'].tolist()
-
-if __name__ == "__main__":
-    # CSV 파일 로드
-    df = pd.read_csv('data/commons/records.csv')
-    # Analysis 클래스 사용
-    analysis = Analysis()
-    result_df = analysis.calculate_word_accuracy(df)
-    print(result_df)

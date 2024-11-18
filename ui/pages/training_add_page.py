@@ -200,8 +200,8 @@ class TrainingAddPage:
             self.state_label.setText("단어를 입력하세요")
             self.state_label.setStyleSheet("color: red")
             return
-            
-        add_result = self.game.add([question, answer, info])
+        print(f"question: {question}, answer: {answer}, info: {info}")
+        add_result = self.game.add(question, answer, info)
         
         if add_result == dword.State.SUCCESS:
             self.add_word_to_list(question, answer, info, 0)

@@ -9,9 +9,10 @@ from ui.styles.styles import BUTTON_STYLE, TITLE_STYLE
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import pandas as pd
-from dword.analysis import Analysis
-from dword.game import Game
 from matplotlib import font_manager, rc
+from dword.word_manager import WordManager
+from dword.recordManager import Record
+from dword.analysis import Analysis
 def set_training_main_page(stack: QStackedLayout):
     train_main_page = TrainingMainPage(stack)
     train_main_page.set_page()
@@ -45,18 +46,24 @@ class TrainingMainPage:
         self.canvas = FigureCanvas(self.fig)
         
         try:
-            df = pd.read_csv('data/commons/records.csv')
-            analysis = Analysis()
-            game = Game()
+            word_manager = WordManager("commons")
+            record_manager = Record("commons")
+            analysis = Analysis(word_manager, record_manager)
             
-            daily_counts = analysis.get_memorized_count_by_day(df)
-            if not daily_counts.empty:
-                daily_counts.plot(kind='bar', ax=self.ax1)
+            daily_counts = analysis.get_daily_memorized_word_count()
+            print(daily_counts)
+            if daily_counts:  # dict가 비어있지 않은 경우
+                # dict를 데이터프레임으로 변환
+                df = pd.DataFrame.from_dict(daily_counts, orient='index', columns=['count'])
+                df.index = pd.to_datetime(df.index)
+                
+                # 그래프 그리기
+                df['count'].plot(kind='bar', ax=self.ax1)
                 self.ax1.set_title('날짜별 암기된 단어 수')
                 self.ax1.grid(axis='y', linestyle='--', alpha=0.7)
                 
                 # x축 날짜 표시 수정
-                dates = pd.to_datetime(daily_counts.index)
+                dates = df.index
                 x_ticks = range(len(dates))
                 self.ax1.set_xticks(x_ticks)
                 
@@ -75,17 +82,23 @@ class TrainingMainPage:
                         x_labels.append('')
                 self.ax1.set_xticklabels(x_labels, rotation=45)
             
-            cumulative_counts = analysis.get_cumulative_memorized_count(df)
-            if not cumulative_counts.empty:
-                cumulative_counts.plot(kind='bar', ax=self.ax2)
+            cumulative_counts = analysis.get_cumulative_daily_memorized_word_count()
+            if cumulative_counts:  # dict가 비어있지 않은 경우
+                # dict를 데이터프레임으로 변환
+                df = pd.DataFrame.from_dict(cumulative_counts, orient='index', columns=['count'])
+                df.index = pd.to_datetime(df.index)
+                
+                # 그래프 그리기
+                df['count'].plot(kind='bar', ax=self.ax2)
                 self.ax2.set_title('날짜별 누적 암기 단어 수')
                 self.ax2.grid(axis='y', linestyle='--', alpha=0.7)
                 
-                # x축 날짜 표시 수정 (첫 번째 그래프와 동일하게)
-                dates = pd.to_datetime(cumulative_counts.index)
+                # x축 날짜 표시 수정
+                dates = df.index
                 x_ticks = range(len(dates))
                 self.ax2.set_xticks(x_ticks)
                 
+                # 날짜 레이블 생성
                 x_labels = []
                 prev_year = prev_month = None
                 for date in dates:
@@ -101,13 +114,15 @@ class TrainingMainPage:
                 self.ax2.set_xticklabels(x_labels, rotation=45)
             
             # 통계 정보를 QLabel에 표시
-            remaining_words = game.get_unmemorized_word_count()
-            total_words = len(analysis.calculate_word_accuracy(df))
-            memorized_words = total_words - remaining_words
+            remaining_words = analysis.get_number_of_not_memorized_words()
+            total_words = len(analysis.word_manager.get_word_list())
+            memorized_words = analysis.get_number_of_memorized_words()
+            review_words = analysis.get_number_of_review_words()
             self.stats_label.setText(
                 f'전체 단어: {total_words}개 '
                 f'외운 단어: {memorized_words}개 '
                 f'학습 필요 단어: {remaining_words}개'
+                f'복습이 필요한 단어: {review_words}개'
             )
             self.stats_label.setStyleSheet("QLabel { background-color: #f0f0f0; padding: 10px; border-radius: 5px; font-size: 16px; }")
             
