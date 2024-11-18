@@ -4,6 +4,8 @@ from .recordManager import Record
 from .state import State
 from queue import Queue
 import random
+import logging
+from .analysis import Analysis
 
 DAYS = 10
 COUNT = 5
@@ -24,6 +26,12 @@ class Game:
     self.record = Record(self.section_name)
     self.format = (question_tag, answer_tag)
     self.question_list = []
+    self.logger = logging.getLogger(__name__)
+    self.logger.setLevel(logging.INFO)
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    self.logger.addHandler(handler)
 
   # === 게임 상태 관리 ===
   def is_start(self):
@@ -35,20 +43,57 @@ class Game:
     return self.queue.qsize()
 
   # === 문제 및 답변 관리 ===
-  def set_question(self, max_rate: int = MAX_RATE, max_count: int = MAX_COUNT) -> State:
-    """정답률이 낮은 단어들로 문제 목록 생성"""
+  def _get_low_score_words(self) -> List[str]:
+    """정답률이 낮은 단어들을 추출하는 함수"""
+    # 정답률 데이터 가져오기
     correct_rate_data = self.get_rate()
-    low_score_words = [
-      key for key, rate in correct_rate_data.items() 
-      if rate < max_rate
-    ][:max_count]
+    keys = self.word_manager.get_list().keys()
+    
+    # 현재 단어장에 존재하는 단어들 중 정답률이 낮은 것들만 필터링
+    low_score_words = []
+    for word, rate in correct_rate_data.items():
+        if word in keys:
+            low_score_words.append((word, rate))
+    
+    # 정답률 순으로 정렬
+    low_score_words.sort(key=lambda x: x[1])
+    
+    result = []
+    for word, _ in low_score_words:
+        result.append(word)
+    
+    return result
 
-    if not low_score_words:
-      return State.NO_DATA
+  def set_question(self) -> State:
+    """정답률이 낮은 단어들로 문제 목록 생성"""
+    low_score_words = self._get_low_score_words()
+    analysis = Analysis()
+    unmemorized_words = analysis.get_unmemorized_words(self.record.load_file())
+    self.logger.info(f"unmemorized_words: {unmemorized_words}")
+    self.logger.info(f"low_score_words: {low_score_words}")
 
-    self.question_list = random.sample(low_score_words, len(low_score_words))
+    for word in unmemorized_words:
+        if word not in self.question_list:
+            self.question_list.append(word)
+        if len(self.question_list) >= MAX_COUNT:
+          break
+    for word in low_score_words:
+        if word not in self.question_list:
+            self.question_list.append(word)
+        if len(self.question_list) >= MAX_COUNT:
+          break
+    
+    if not self.question_list:
+        return State.NO_DATA
+    
+    self.logger.info(f"question_list: {self.question_list}")
+    
+    # 문제 목록을 랜덤하게 섞기
+    random.shuffle(self.question_list)
+    self.logger.info(f"random_question_list: {self.question_list}")
+        
     for word in self.question_list:
-      self.queue.put(word)
+        self.queue.put(word)
     return State.SUCCESS
 
   def get_question(self):
@@ -68,6 +113,7 @@ class Game:
   def answer(self, user_answer: str) -> State:
     """사용자 답변 검증"""
     if not self.processing:
+        self.logger.warning("게임이 시작되지 않았습니다.")
         return State.NO_PROCESS
 
     correct_answers = [answer.strip() for answer in self.question_answer_dict[self.current_question].split(',')]
@@ -77,16 +123,23 @@ class Game:
     is_correct = any(answer.replace(" ", "") == user_answer for answer in correct_answers)
     self.scores[self.current_question] = 1 if is_correct else 0
     
+    if is_correct:
+        self.logger.info(f"정답입니다! 문제: {self.current_question}")
+    else:
+        self.logger.info(f"오답입니다. 문제: {self.current_question}, 정답: {self.question_answer_dict[self.current_question]}")
+    
     return State.CORRECT if is_correct else State.WRONG
 
   # === 게임 진행 제어 ===
   def start(self) -> State:
     """게임 시작"""
     if self.processing:
+      self.logger.warning("게임이 이미 진행 중입니다.")
       return State.ALREADY
     
     self.question_answer_dict = self.word_manager.get_list()
     if not self.question_answer_dict:
+      self.logger.error("사용 가능한 단어가 없습니다.")
       return State.NO_DATA
 
     result = self.set_question()
@@ -96,6 +149,7 @@ class Game:
     self.processing = True
     self.scores = {}
     self.current_question = self.queue.get()
+    self.logger.info(f"게임이 시작되었습니다. 총 {len(self.question_list)}개의 문제가 준비되었습니다.")
     return State.SUCCESS
 
   def next(self):
@@ -156,6 +210,7 @@ class Game:
   def add(self, question: str, answers: str, info: str):
     """새 단어 추가"""
     if self.processing:
+        self.logger.warning("게임 진행 중에는 단어를 추가할 수 없습니다.")
         return State.ALREADY
     else:
         if self.get_available_word_count() <= 0:
@@ -163,6 +218,7 @@ class Game:
             
         if not self.word_manager.is_word(question):
             self.word_manager.add(question, answers, info)
+            self.logger.info(f"새로운 단어가 추가되었습니다: {question}")
             return State.SUCCESS
         else:
             return State.DUPLICATION
@@ -184,6 +240,7 @@ class Game:
   def get_list(self):
     """단어 목록 조회"""
     if self.processing:
+      self.logger.warning("게임 진행 중에는 단어를 조회할 수 없습니다.")
       return State.ALREADY
     else:
       return self.word_manager.get_list()
@@ -192,6 +249,7 @@ class Game:
   def get_info(self):
     """섹션 정보 조회"""
     if self.processing:
+      self.logger.warning("게임 진행 중에는 섹션 정보를 조회할 수 없습니다.")
       return State.ALREADY
     else:
       return self.word_manager.get_info()

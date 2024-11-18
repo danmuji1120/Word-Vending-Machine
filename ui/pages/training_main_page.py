@@ -46,14 +46,14 @@ class TrainingMainPage:
         
         try:
             df = pd.read_csv('data/commons/records.csv')
-            analysis = Analysis(df)
+            analysis = Analysis()
             game = Game()
             
-            # 날짜별 암기된 단어 수 막대 차트 (첫 번째 그래프)
-            daily_counts = analysis.show_memorized_count_by_day()
+            daily_counts = analysis.get_memorized_count_by_day(df)
             if not daily_counts.empty:
                 daily_counts.plot(kind='bar', ax=self.ax1)
                 self.ax1.set_title('날짜별 암기된 단어 수')
+                self.ax1.grid(axis='y', linestyle='--', alpha=0.7)
                 
                 # x축 날짜 표시 수정
                 dates = pd.to_datetime(daily_counts.index)
@@ -75,11 +75,11 @@ class TrainingMainPage:
                         x_labels.append('')
                 self.ax1.set_xticklabels(x_labels, rotation=45)
             
-            # 날짜별 누적 암기 단어 수 (두 번째 그래프)
-            if not daily_counts.empty:
-                cumulative_counts = daily_counts.cumsum()
+            cumulative_counts = analysis.get_cumulative_memorized_count(df)
+            if not cumulative_counts.empty:
                 cumulative_counts.plot(kind='bar', ax=self.ax2)
                 self.ax2.set_title('날짜별 누적 암기 단어 수')
+                self.ax2.grid(axis='y', linestyle='--', alpha=0.7)
                 
                 # x축 날짜 표시 수정 (첫 번째 그래프와 동일하게)
                 dates = pd.to_datetime(cumulative_counts.index)
@@ -102,9 +102,12 @@ class TrainingMainPage:
             
             # 통계 정보를 QLabel에 표시
             remaining_words = game.get_unmemorized_word_count()
-            total_words = len(analysis.calculate_word_accuracy())
+            total_words = len(analysis.calculate_word_accuracy(df))
+            memorized_words = total_words - remaining_words
             self.stats_label.setText(
-                f'학습 필요 단어: {remaining_words} / 전체 단어: {total_words}'
+                f'전체 단어: {total_words}개 '
+                f'외운 단어: {memorized_words}개 '
+                f'학습 필요 단어: {remaining_words}개'
             )
             self.stats_label.setStyleSheet("QLabel { background-color: #f0f0f0; padding: 10px; border-radius: 5px; font-size: 16px; }")
             
@@ -125,6 +128,7 @@ class TrainingMainPage:
             ("Add", lambda: ui.pages.set_training_add_page(self.stack)),
             ("Delete", lambda: ui.pages.set_training_delete_page(self.stack)),
             ("List", None),
+            ("Refresh", self.refresh_page),  # 새로고침 버튼 추가
             ("Back", lambda: events.back_page(self.stack))
         ]
         
@@ -174,4 +178,15 @@ class TrainingMainPage:
     def set_page(self):
         self.stack.addWidget(self.widget)
         self.stack.setCurrentIndex(self.stack.count() - 1)
+
+    def refresh_page(self):
+        # 기존 그래프 초기화
+        self.ax1.clear()
+        self.ax2.clear()
+        
+        # 통계 데이터 새로고침
+        self.init_stats()
+        
+        # 캔버스 업데이트
+        self.canvas.draw()
 

@@ -100,18 +100,42 @@ class WordManager:
             return False
         else:
           return word in data.iloc[:, 1].values
+    
+    # 모든 단어를 list로 반환
+    def get_word_list(self) -> list:
+        data = self.load_file()
+        return data["question"].tolist()
+
+    def get_answer_dict(self) -> dict:
+        data = self.load_file()
+        result = {}
+        for i in range(len(data)):
+            result[data["question"][i]] = data["answer"][i]
+        return result
+    #===============================================
+    # get_answer_dict로 전환 후 삭제 예정
     def get_list(self):
         data = self.load_file()
         result = {}
         for i in range(len(data)):
             result[data["question"][i]] = data["answer"][i]
         return result
+    #===============================================
+    def get_info_dict(self) -> dict:
+        data = self.load_file()
+        result = {}
+        for i in range(len(data)):
+            result[data["question"][i]] = data["info"][i]
+        return result
+    #===============================================
+    # get_answer_dict로 전환 후 삭제 예정
     def get_info(self):
         data = self.load_file()
         result = {}
         for i in range(len(data)):
             result[data["question"][i]] = data["info"][i]
         return result
+    #===============================================
     def load_file(self):
         self.init()
         try:

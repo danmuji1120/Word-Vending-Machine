@@ -43,9 +43,10 @@ class TrainingStartPage:
         self.answer_input.setPlaceholderText("Enter answer")
         self.answer_input.setMinimumSize(250, 35)
         self.answer_input.setStyleSheet(INPUT_STYLE)
+        self.answer_input.setAlignment(Qt.AlignCenter)
 
         # 상태 라벨 설정
-        self.state_label = components.set_default_label("------")
+        self.state_label = components.set_default_label("엔터를 입력하면 시작")
         self.state_label.setAlignment(Qt.AlignCenter)
         self.state_label.setStyleSheet("font-size: 14px; margin: 10px;")
 
@@ -70,36 +71,36 @@ class TrainingStartPage:
 
     def setup_layout(self):
         vbox = QVBoxLayout()
-        vbox.addStretch(1)
+        vbox.setSpacing(15)  # 위젯 간 간격 설정
+        vbox.setContentsMargins(30, 40, 30, 40)  # 여백 설정
         
-        widget_list = [
-            self.title_label,
-            self.progress_label,  # 진행 상황 라벨 추가
-            self.answer_input,
-            self.state_label,
-            self.submit_btn,
-            self.correct_btn,
-            self.back_btn
-        ]
+        # 타이틀과 진행상황을 담을 상단 컨테이너
+        top_container = QWidget()
+        top_container.setStyleSheet("background-color: #F8F9FA; border-radius: 12px;")
+        top_layout = QVBoxLayout(top_container)
+        top_layout.addWidget(self.title_label)
+        top_layout.addWidget(self.progress_label)
         
-        for widget in widget_list:
-            if isinstance(widget, QLabel):
-                vbox.addWidget(widget)
-            elif isinstance(widget, QLineEdit):
-                hbox = QHBoxLayout()
-                hbox.addStretch(1)
-                hbox.addWidget(widget)
-                hbox.addStretch(1)
-                vbox.addLayout(hbox)
-            elif isinstance(widget, QPushButton):
-                hbox = QHBoxLayout()
-                hbox.addStretch(1)
-                hbox.addWidget(widget)
-                hbox.addStretch(1)
-                vbox.addLayout(hbox)
-                
-        vbox.addStretch(1)
+        # 입력 필드와 상태 표시를 담을 중앙 컨테이너
+        middle_container = QWidget()
+        middle_container.setStyleSheet("background-color: white; border-radius: 12px; padding: 20px;")
+        middle_layout = QVBoxLayout(middle_container)
+        middle_layout.addWidget(self.answer_input)
+        middle_layout.addWidget(self.state_label)
+        
+        # 버튼들을 담을 하단 컨테이너
+        button_container = QWidget()
+        button_layout = QHBoxLayout(button_container)
+        button_layout.addWidget(self.submit_btn)
+        button_layout.addWidget(self.correct_btn)
+        button_layout.addWidget(self.back_btn)
+        
+        vbox.addWidget(top_container)
+        vbox.addWidget(middle_container)
+        vbox.addWidget(button_container)
+        
         self.widget.setLayout(vbox)
+        self.widget.setStyleSheet("background-color: #E8EEF4;")
 
     def set_page(self):
         self.stack.addWidget(self.widget)
@@ -191,10 +192,12 @@ class TrainingStartPage:
                 self.process_answer()
             elif self.processing == False:
                 self.next()
-                self.state_label.setText("------")
+                self.state_label.setText(f"답을 입력 후 엔터를 누르세요")
                 self.state_label.setStyleSheet("color: black;")
         else:
             self.start_game()
+            self.state_label.setText(f"답을 입력 후 엔터를 누르세요")
+            self.state_label.setStyleSheet("color: black;")
     def next(self):
         # 다음 문제로 이동하는 함수
         # 문제 카운트 증가 및 진행 상황 업데이트
