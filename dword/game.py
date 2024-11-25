@@ -56,25 +56,22 @@ class Game:
     self.logger.info(f"unmemorized_words: {unmemorized_words}")
     self.logger.info(f"review_words: {review_words}")
 
-    # 암기되지 않은 단어들을 우선 추가
     selected_unmemorized_count = 0
-    for word in unmemorized_words:
-        if word not in self.question_list:
+    selected_review_count = 0
+    for i in range(max(len(unmemorized_words), len(review_words))):
+        if i < len(unmemorized_words):
             selected_unmemorized_count += 1
-            self.question_list.append(word)
+            self.question_list.append(unmemorized_words[i])
+        if len(self.question_list) >= MAX_COUNT:
+          break
+        if i < len(review_words):
+            selected_review_count += 1
+            self.question_list.append(review_words[i])
         if len(self.question_list) >= MAX_COUNT:
             break
-    
-    # 남은 공간이 있으면 복습이 필요한 단어들 추가
-    selected_review_count = 0
-    if len(self.question_list) < MAX_COUNT:
-        for word in review_words:
-            if word not in self.question_list:
-                selected_review_count += 1
-                self.question_list.append(word)
-            if len(self.question_list) >= MAX_COUNT:
-                break
+        
     all_words = self.word_manager.get_word_list()
+    random.shuffle(all_words)
     selected_memorized_count = 0
     for word in all_words:
         if len(self.question_list) >= MAX_COUNT:
@@ -262,7 +259,7 @@ class Game:
       return self.word_manager.get_info()
 
   def get_question_tag(self):
-    """문제 ��그 반환"""
+    """문제 태그 반환"""
     return self.format[0]
 
   def get_answer_tag(self):
