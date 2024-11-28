@@ -58,9 +58,9 @@ class TrainingMainPage:
                 df.index = pd.to_datetime(df.index)
                 
                 # 그래프 그리기
-                df['count'].plot(kind='bar', ax=self.ax1)
+                df['count'].plot(kind='bar', ax=self.ax1, color='black')
                 self.ax1.set_title('날짜별 암기된 단어 수')
-                self.ax1.grid(axis='y', linestyle='--', alpha=0.7)
+                
                 
                 # x축 날짜 표시 수정
                 dates = df.index
@@ -88,30 +88,14 @@ class TrainingMainPage:
                 df = pd.DataFrame.from_dict(cumulative_counts, orient='index', columns=['count'])
                 df.index = pd.to_datetime(df.index)
                 
-                # 그래프 그리기
-                df['count'].plot(kind='bar', ax=self.ax2)
+                # 그래프 그리기 (라인 차트로 변경)
+                df['count'].plot(kind='line', ax=self.ax2, color='black')
                 self.ax2.set_title('날짜별 누적 암기 단어 수')
-                self.ax2.grid(axis='y', linestyle='--', alpha=0.7)
                 
-                # x축 날짜 표시 수정
-                dates = df.index
-                x_ticks = range(len(dates))
-                self.ax2.set_xticks(x_ticks)
                 
-                # 날짜 레이블 생성
-                x_labels = []
-                prev_year = prev_month = None
-                for date in dates:
-                    if prev_year != date.year:
-                        x_labels.append(str(date.year))
-                        prev_year = date.year
-                        prev_month = date.month
-                    elif prev_month != date.month:
-                        x_labels.append(str(date.month))
-                        prev_month = date.month
-                    else:
-                        x_labels.append('')
-                self.ax2.set_xticklabels(x_labels, rotation=45)
+                # 디버깅 정보 추가
+                print(f"Cumulative Counts: {cumulative_counts}")  # 데이터 확인
+                print(f"DataFrame for Cumulative Counts:\n{df}")  # 데이터프레임 확인
             
             # 통계 정보를 QLabel에 표시
             remaining_words = analysis.get_number_of_not_memorized_words()
