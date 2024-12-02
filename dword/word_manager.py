@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import logging
 from typing import List
+from dword.path import resource_path
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -11,7 +12,9 @@ logging.basicConfig(level=logging.INFO)
 class WordManager:
     def __init__(self, section_name: str):
         self.section_name = section_name
-        self.path = "data/" + self.section_name + "/words.csv"
+        self.path = resource_path("data")
+        self.path = os.path.join(self.path, self.section_name, "words.csv")
+        # self.path = "data/" + self.section_name + "/words.csv"
         self.init()
 
     def init(self):
@@ -121,6 +124,12 @@ class WordManager:
             result[data["question"][i]] = data["answer"][i]
         return result
     #===============================================
+    def get_date_dict(self) -> dict:
+        data = self.load_file()
+        result = {}
+        for i in range(len(data)):
+            result[data["question"][i]] = data["date"][i]
+        return result
     def get_info_dict(self) -> dict:
         data = self.load_file()
         result = {}
@@ -128,7 +137,7 @@ class WordManager:
             result[data["question"][i]] = data["info"][i]
         return result
     #===============================================
-    # get_answer_dict로 전환 후 삭제 예정
+    # get_info_dict로 전환 후 삭제 예정
     def get_info(self):
         data = self.load_file()
         result = {}
