@@ -3,7 +3,7 @@ import components
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 import ui
-import ui.pages
+import ui.pages.training
 from ui.styles.styles import TITLE_STYLE, BUTTON_STYLE
 def set_main_page(stack: QStackedLayout):
   title_label = components.set_title_label("Word Test")
@@ -12,7 +12,7 @@ def set_main_page(stack: QStackedLayout):
   study_btn.setStyleSheet(BUTTON_STYLE)
   exit_btn = components.set_default_btn("Exit")
   exit_btn.setStyleSheet(BUTTON_STYLE)
-  study_btn.clicked.connect(lambda: ui.pages.set_training_main_page(stack))
+  study_btn.clicked.connect(lambda: ui.pages.training.set_training_section_page(stack))
   exit_btn.clicked.connect(QCoreApplication.instance().quit)
-  widget_list = [title_label, study_btn, exit_btn]
+  widget_list = [title_label, study_btn, exit_btn] 
   components.set_default_page(widget_list, stack)

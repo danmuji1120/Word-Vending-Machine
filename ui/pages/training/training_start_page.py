@@ -7,17 +7,18 @@ import events
 import dword
 from ui.styles.styles import INPUT_STYLE, BUTTON_STYLE, TITLE_STYLE
 
-def set_training_start_page(stack: QStackedLayout):
+def set_training_start_page(stack: QStackedLayout, section_name="commons"):
     # 훈련 시작 페이지를 스택에 추가하는 함수
-    train_start_page = TrainingStartPage(stack)
+    train_start_page = TrainingStartPage(stack, section_name)
     train_start_page.set_page()
 
 class TrainingStartPage:
-    def __init__(self, stack) -> None:
+    def __init__(self, stack, section_name="commons") -> None:
         # 클래스 초기화 및 기본 변수 설정
         self.stack = stack
+        self.section_name = section_name
         self.widget = QWidget()
-        self.game = dword.Game()
+        self.game = dword.Game(self.section_name)
         self.info_data = self.game.get_info()
         self.count = 0                  # 총 문제 수
         self.correct_count = 0          # 맞은 문제 수

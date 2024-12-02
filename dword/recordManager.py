@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import logging
 from datetime import datetime, timedelta
-from dword.path import resource_path
+from dword.path import DATA_PATH
 
 logging.basicConfig(level=logging.INFO)
 
@@ -13,7 +13,7 @@ class Record:
 
   def __init__(self, section_name) -> None:
     self.section_name = section_name
-    self.path = resource_path("data")
+    self.path = DATA_PATH
     self.path = os.path.join(self.path, self.section_name, "records.csv")
     # self.path = "data/" + self.section_name + "/records.csv"
     self.init()

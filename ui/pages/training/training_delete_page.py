@@ -6,14 +6,15 @@ import events
 import dword
 from ui.styles.styles import TITLE_STYLE, INPUT_STYLE, BUTTON_STYLE
 
-def set_training_delete_page(stack: QStackedLayout):
-    train_delete_page = TrainingDeletePage(stack)
+def set_training_delete_page(stack: QStackedLayout, section_name="commons"):
+    train_delete_page = TrainingDeletePage(stack, section_name)
     train_delete_page.set_page()
 
 class TrainingDeletePage:
-    def __init__(self, stack) -> None:
+    def __init__(self, stack, section_name = "commons") -> None:
         self.stack = stack
-        self.game = dword.Game()
+        self.section_name = section_name
+        self.game = dword.Game(section_name=self.section_name)
         self.widget = QWidget()
         
         # 스크롤 영역 초기화

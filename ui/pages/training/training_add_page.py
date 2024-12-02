@@ -5,12 +5,13 @@ from PyQt5.QtGui import *
 import events
 import dword
 from ui.styles.styles import INPUT_STYLE, BUTTON_STYLE, TITLE_STYLE
-def set_training_add_page(stack: QStackedLayout):
-  train_add_page = TrainingAddPage(stack)
+def set_training_add_page(stack: QStackedLayout, section_name="commons"):
+  train_add_page = TrainingAddPage(stack, section_name)
   train_add_page.set_page()
 class TrainingAddPage:
-    def __init__(self, stack) -> None:
+    def __init__(self, stack, section_name) -> None:
         self.stack = stack
+        self.section_name = section_name
         self.widget = QWidget()
         # 스크롤 영역 초기화
         self.scroll_area = QScrollArea()
@@ -21,7 +22,7 @@ class TrainingAddPage:
         self.word_rate_layout = QVBoxLayout()
 
         # 게임 데이터 초기화
-        self.game = dword.Game()
+        self.game = dword.Game(self.section_name)
         self.word_data = self.game.get_list()
         self.info_data = self.game.get_info()
         self.rate_data = self.game.get_rate()
@@ -191,7 +192,7 @@ class TrainingAddPage:
             self.state_label.setText("더 이상 단어를 추가할 수 없습니다")
             self.state_label.setStyleSheet("color: red")
             return
-            
+        
         question = self.question_input.text().strip()
         answer = self.answer_input.text().strip()
         info = self.info_input.text().strip()

@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 import logging
 from typing import List
-from dword.path import resource_path
+from dword.path import DATA_PATH
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 class WordManager:
     def __init__(self, section_name: str):
         self.section_name = section_name
-        self.path = resource_path("data")
+        self.path = DATA_PATH
         self.path = os.path.join(self.path, self.section_name, "words.csv")
         # self.path = "data/" + self.section_name + "/words.csv"
         self.init()
